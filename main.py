@@ -39,29 +39,39 @@ def activationDer(x):
 activationDer = np.vectorize(activationDer)
 
 def propagateForward(inputNum):
-	global outputVec
-	outputVec[0] = activation(np.dot(weightMats[0], inputVec[inputNum]))
+	global outputVecs
+	outputVecs[0] = activation(np.add(np.dot(weightMats[0], inputVec[inputNum]), biasVecs[0]))
 	for i in range(1, len(hiddenLayers)):
-		outputVec[i] = activation(np.dot(weightMats[i], outputVec[i-1]))
+		outputVecs[i] = activation(np.add(np.dot(weightMats[i], outputVecs[i-1]), biasVecs[i]))
 
 def propagateBackward(inputNum):
-	global deltaVec
+	global deltaVecs
 	global costFunction
-	errorVec = np.subtract(desiredOutputVec[-1], outputVec[-1])
+	errorVec = np.subtract(desiredOutputVec[-1], outputVecs[-1])
 	costFunction += np.sum(errorVec**2)
-	deltaVec = range(len(hiddenLayers))
-	deltaVec[-1] = np.multiply(errorVec, activation(outputVec[-1]))
+	deltaVecs = range(len(hiddenLayers))
+	deltaVecs[-1] = np.multiply(errorVec, activation(outputVecs[-1]))
 	for i in range(len(hiddenLayers) - 2, -1, -1):
-		deltaVec[i] = np.multiply(np.dot(deltaVec[i+1], weightMats[i+1]), activationDer(outputVec[i]))
+		deltaVecs[i] = np.multiply(np.dot(deltaVecs[i+1], weightMats[i+1]), activationDer(outputVecs[i]))
 
-def adjustWeights():
-	global prevWeights
-	currWeights = range(len(weightMats))
-	for i in range(1, len(hiddenLayers)):
-		currWeights[i] = np.copy(weightMats[i])
-		deltaVec[i].shape = (len(deltaVec[i]), 1)
-		weightMats[i] = np.add(np.add(currWeights[i], np.multiply(np.subtract(prevWeights[i], currWeights[i]), momentum)), np.multiply(np.multiply(deltaVec[i], outputVec[i-1]), 2 * learningRate))
-		prevWeights = currWeights
+def adjustWeights(inputNum):
+	global deltaVecs
+	global prevWeightMats
+	global prevBiasVecs
+	currWeightMats = range(len(weightMats))
+	currBiasVecs = range(len(biasVecs))
+	for i in range(len(hiddenLayers)):
+		currWeightMats[i] = np.copy(weightMats[i])
+		currBiasVecs[i] = np.copy(biasVecs[i])
+		deltaVecs[i].shape = (len(deltaVecs[i]), 1)
+		if i == 0:
+			weightMats[i] = np.add(np.add(currWeightMats[i], np.multiply(np.subtract(prevWeightMats[i], currWeightMats[i]), momentum)), np.multiply(np.multiply(deltaVecs[i], inputVec[inputNum]), 2 * learningRate))
+		else:
+			weightMats[i] = np.add(np.add(currWeightMats[i], np.multiply(np.subtract(prevWeightMats[i], currWeightMats[i]), momentum)), np.multiply(np.multiply(deltaVecs[i], outputVecs[i-1]), 2 * learningRate))
+		deltaVecs[i].shape = (len(deltaVecs[i]))
+		biasVecs[i] = np.add(np.add(currBiasVecs[i], np.multiply(np.subtract(prevBiasVecs[i], currBiasVecs[i]), momentum)), np.multiply(deltaVecs[i], 2 * learningRate))
+		prevWeightMats = currWeightMats
+		prevBiasVecs = currBiasVecs
 
 def learningMode():
 	global costFunction
@@ -84,7 +94,7 @@ def learningMode():
 				inputNum = i
 			propagateForward(inputNum)
 			propagateBackward(inputNum)
-			adjustWeights()
+			adjustWeights(inputNum)
 
 		if (epoch % errorSavingStep == 0):
 			fileObject.write(str(costFunction) + '\n')
@@ -103,20 +113,29 @@ generations = 20
 randomOrder = 1
 momentum = 0.7
 learningRate = 0.01
-errorSavingStep = 2
+errorSavingStep = 1
+biasFlag = 1
 
 costFunction = 0
 data = readDataFromFile('data/iris.data')
 inputVec = data[0]
 desiredOutputVec = data[1]
 
-hiddenLayers = [3, len(desiredOutputVec[0])]
+hiddenLayers = [2, len(desiredOutputVec[0])]
 weightMats = list()
 weightMats.append(np.random.uniform(low=randMinVal, high=randMaxVal, size=(hiddenLayers[0], len(inputVec[0]))))
 for i in range(1, len(hiddenLayers)):
 	weightMats.append(np.random.uniform(low=randMinVal, high=randMaxVal, size=(hiddenLayers[i], len(weightMats[i-1]))))
-prevWeights = range(len(weightMats))
-outputVec = range(len(hiddenLayers))
+prevWeightMats = range(len(weightMats))
+biasVecs = list()
+if biasFlag:
+	for i in range(len(hiddenLayers)):
+		biasVecs.append(np.random.uniform(low=randMinVal, high=randMaxVal, size=hiddenLayers[i]))
+else:
+	for i in range(len(hiddenLayers)):
+		biasVecs.append(np.zeros(hiddenLayers[i]))
+prevBiasVecs = range(len(biasVecs))
+outputVecs = range(len(hiddenLayers))
 
 learningMode()
 testingMode()
