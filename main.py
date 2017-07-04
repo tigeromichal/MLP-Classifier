@@ -47,7 +47,7 @@ def propagateForward(inputNum):
 def propagateBackward(inputNum):
 	global deltaVecs
 	global costFunction
-	errorVec = np.subtract(desiredOutputVec[-1], outputVecs[-1])
+	errorVec = np.subtract(desiredOutputVec[inputNum], outputVecs[-1])
 	costFunction += np.sum(errorVec**2)
 	deltaVecs = range(len(hiddenLayers))
 	deltaVecs[-1] = np.multiply(errorVec, activation(outputVecs[-1]))
@@ -106,6 +106,9 @@ def learningMode():
 def testingMode():
 	for inputNum in range(len(inputVec)):
 		propagateForward(inputNum)
+		expectedClass = np.argmax(desiredOutputVec[inputNum])
+		resultClass = np.argmax(outputVecs[-1])
+		confusionMat[expectedClass][resultClass] += 1
 
 randMinVal = -1.0
 randMaxVal = 1.0
@@ -121,7 +124,7 @@ data = readDataFromFile('data/iris.data')
 inputVec = data[0]
 desiredOutputVec = data[1]
 
-hiddenLayers = [2, len(desiredOutputVec[0])]
+hiddenLayers = [10, len(desiredOutputVec[0])]
 weightMats = list()
 weightMats.append(np.random.uniform(low=randMinVal, high=randMaxVal, size=(hiddenLayers[0], len(inputVec[0]))))
 for i in range(1, len(hiddenLayers)):
@@ -136,8 +139,10 @@ else:
 		biasVecs.append(np.zeros(hiddenLayers[i]))
 prevBiasVecs = range(len(biasVecs))
 outputVecs = range(len(hiddenLayers))
+confusionMat = np.zeros((len(desiredOutputVec[0]), len(desiredOutputVec[0])))
 
 learningMode()
 testingMode()
 
+print confusionMat
 plotCostFunction('out/costFunction')
