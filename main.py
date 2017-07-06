@@ -11,7 +11,8 @@ def readDataFromFile(filename):
 	text = fileObject.read()
 	fileObject.close()
 	lines = text.split('\n')
-	random.shuffle(lines)
+	if shuffling:
+		random.shuffle(lines)
 	for i in range(len(lines)):
 		if lines[i] == '':
 			continue
@@ -38,9 +39,9 @@ def activationDer(x):
 	return x * (1.0 - x)
 activationDer = np.vectorize(activationDer)
 
-def propagateForward(inputNum):
+def propagateForward(inputNum, givenInputVec):
 	global outputVecs
-	outputVecs[0] = activation(np.add(np.dot(weightMats[0], inputVec[inputNum]), biasVecs[0]))
+	outputVecs[0] = activation(np.add(np.dot(weightMats[0], givenInputVec[inputNum]), biasVecs[0]))
 	for i in range(1, len(hiddenLayers)):
 		outputVecs[i] = activation(np.add(np.dot(weightMats[i], outputVecs[i-1]), biasVecs[i]))
 
@@ -75,7 +76,7 @@ def adjustWeights(inputNum):
 
 def learningMode():
 	global costFunction
-	numbers = [i for i in range (len(inputVec))]
+	numbers = [i for i in range (len(learningInputVec))]
 	inputNum = 0
 	randNoRepeat = 0
 
@@ -84,7 +85,7 @@ def learningMode():
 	epoch = 0
 	while epoch < generations:
 		costFunction = 0
-		for i in range(len(inputVec)):
+		for i in range(len(learningInputVec)):
 			if(randomOrder):
 				randNoRepeat = random.randint(0, len(numbers) - i - 1)
 				inputNum = numbers[randNoRepeat]
@@ -92,7 +93,7 @@ def learningMode():
 				numbers[len(numbers) - i - 1] = inputNum
 			else:
 				inputNum = i
-			propagateForward(inputNum)
+			propagateForward(inputNum, learningInputVec)
 			propagateBackward(inputNum)
 			adjustWeights(inputNum)
 
@@ -104,25 +105,32 @@ def learningMode():
 	fileObject.close()
 	
 def testingMode():
-	for inputNum in range(len(inputVec)):
-		propagateForward(inputNum)
-		expectedClass = np.argmax(desiredOutputVec[inputNum])
+	for inputNum in range(len(testInputVec)):
+		propagateForward(inputNum, testInputVec)
+		expectedClass = np.argmax(testDesiredOutputVec[inputNum])
 		resultClass = np.argmax(outputVecs[-1])
 		confusionMat[expectedClass][resultClass] += 1
 
 randMinVal = -1.0
 randMaxVal = 1.0
-generations = 20
+generations = 100
 randomOrder = 1
-momentum = 0.7
+momentum = 0.6
 learningRate = 0.01
 errorSavingStep = 1
 biasFlag = 1
+learningDataPercentage = 0.7
+shuffling = 1
 
 costFunction = 0
 data = readDataFromFile('data/iris.data')
 inputVec = data[0]
 desiredOutputVec = data[1]
+learningDataCount = int(learningDataPercentage * len(inputVec))
+learningInputVec = np.array(inputVec[:learningDataCount])
+learningDesiredOutputVec = np.array(desiredOutputVec[:learningDataCount])
+testInputVec = np.array(inputVec[learningDataCount:])
+testDesiredOutputVec = np.array(desiredOutputVec[learningDataCount:])
 
 hiddenLayers = [10, len(desiredOutputVec[0])]
 weightMats = list()
